@@ -21,22 +21,26 @@ package stapl.core
 
 import AttributeType._
 import stapl.core.pdp.EvaluationCtx
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{ Try, Success, Failure }
 
-sealed abstract class Attribute(val cType: AttributeContainerType, val name: String, val aType: AttributeType) extends Value {
+sealed abstract class Attribute(val cType: AttributeContainerType, val name: String, val aType: AttributeType)
+  extends Value with Serializable {
 
   override def getConcreteValue(ctx: EvaluationCtx) =
     ctx.findAttribute(this)
 }
 object Attribute {
-  
+
   /**
    * A constructor to get a ListAttribute or SimpleAttribute depending on the
    * given multiplicity.
    */
   def apply(cType: AttributeContainerType, name: String, aType: AttributeType, multiValued: Boolean): Attribute = {
-    if(multiValued) {
-      new ListAttribute(cType, name, aType) 
-    } else { 
+    if (multiValued) {
+      new ListAttribute(cType, name, aType)
+    } else {
       new SimpleAttribute(cType, name, aType)
     }
   }
@@ -46,7 +50,7 @@ case class ListAttribute(ct: AttributeContainerType, n: String, at: AttributeTyp
   extends Attribute(ct, n, at) {
 
   override val isList = true
-  
+
   override def toString(): String = s"$cType.$name:List[$aType]"
 
 }
@@ -64,7 +68,7 @@ case class SimpleAttribute(ct: AttributeContainerType, n: String, at: AttributeT
   extends Attribute(ct, n, at) {
 
   override val isList = false
-  
+
   override def toString(): String = s"$cType.$name:$aType"
 
 }

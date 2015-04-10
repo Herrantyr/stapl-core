@@ -24,12 +24,24 @@ import stapl.core.Attribute
 import stapl.core.ConcreteValue
 import stapl.core.Decision
 import stapl.core.Result
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.blocking
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import scala.util.{ Try, Success, Failure }
+import scala.collection.mutable.ListBuffer
+import stapl.core.ObligationAction
+import stapl.core.ConcreteObligationAction
 
 /**
  * Class used for representing a policy decision point (PDP). A PDP provides
  * access decisions by evaluating a policy.
  */
-class PDP(policy: AbstractPolicy, attributeFinder: AttributeFinder, remoteEvaluator: RemoteEvaluator) {
+class PDP(policy: AbstractPolicy,
+  attributeFinder: AttributeFinder = new AttributeFinder,
+  obligationService: ObligationService = new ObligationService,
+  remoteEvaluator: RemoteEvaluator = new RemoteEvaluator) {
 
   private val timestampGenerator = new SimpleTimestampGenerator
 
@@ -37,19 +49,19 @@ class PDP(policy: AbstractPolicy, attributeFinder: AttributeFinder, remoteEvalua
    * Set up this new PDP with an empty attribute finder (which does not find
    * any attributes) and empty remote evaluator.
    */
-  def this(policy: AbstractPolicy) = this(policy, new AttributeFinder, new RemoteEvaluator)
-  
+  def this(policy: AbstractPolicy) = this(policy, new AttributeFinder, new ObligationService, new RemoteEvaluator)
+
   /**
    * Set up this new PDP with an empty attribute finder (which does not find
    * any attributes).
    */
-  def this(policy: AbstractPolicy, remoteEvaluator: RemoteEvaluator) = this(policy, new AttributeFinder, remoteEvaluator)
+  def this(policy: AbstractPolicy, remoteEvaluator: RemoteEvaluator) = this(policy, new AttributeFinder, new ObligationService, remoteEvaluator)
 
   /**
    * Set up this new PDP with an empty remote evaluator.
    */
-  def this(policy: AbstractPolicy, attributeFinder: AttributeFinder) = this(policy, attributeFinder, new RemoteEvaluator)
-  
+  def this(policy: AbstractPolicy, attributeFinder: AttributeFinder) = this(policy, attributeFinder, new ObligationService, new RemoteEvaluator)
+
   /**
    * Evaluate the policy of this PDP with given subject id, action id, resource id
    * and possibly extra attributes and return the result.
@@ -70,13 +82,27 @@ class PDP(policy: AbstractPolicy, attributeFinder: AttributeFinder, remoteEvalua
    * Evaluate the policy of this PDP with given evaluation id and request context
    * and return the result. This will employ the attribute finder of this PDP.
    */
-  def evaluate(evaluationId: Long, ctx: RequestCtx): Result =
+  def evaluate(evaluationId: String, ctx: RequestCtx): Result =
     evaluate(new BasicEvaluationCtx(evaluationId, ctx, attributeFinder, remoteEvaluator))
 
   /**
    * Evaluate the policy of this PDP with given evaluation context and return
    * the result.
    * This allows you to specify another attribute finder than the one of this PDP.
+   *
+   * The PDP will try to fulfill all obligations using the ObligationService and removes
+   * the fulfilled obligations from the result.
    */
-  def evaluate(ctx: EvaluationCtx): Result = policy.evaluate(ctx)
+  def evaluate(ctx: EvaluationCtx): Result = {
+    val result = policy.evaluate(ctx)
+    // try to fulfill the obligations
+    val remainingObligations = ListBuffer[ConcreteObligationAction]()
+    for (obl <- result.obligationActions) {
+      if (!obligationService.fulfill(obl)) {
+        remainingObligations += obl
+      }
+    }
+    // return the result with the remaining obligations
+    new Result(result.decision, remainingObligations.toList, ctx.employedAttributes)
+  }
 }

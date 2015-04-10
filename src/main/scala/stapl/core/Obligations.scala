@@ -19,30 +19,71 @@
  */
 package stapl.core
 
+import stapl.core.pdp.EvaluationCtx
+
 /**
- * 
+ * An obligation consists of an action that should be fulfilled and the
+ * effect on which the action should be fulfilled.
  */
 case class Obligation(val action: ObligationAction, val fulfillOn: Effect)
 
 /**
- * Class used for representing the action to be performed as specified in
- * an obligation.
+ * Traits for representing obligations:
+ *
+ * - ObligationAction: the obligation actions that can be specified in policies,
+ * 		but can still contain attribute references that should be concretized
+ *   	using the evaluation context.
+ *
+ * - ConcreteObligationAction: the concretized obligation actions
+ *
+ * - SimpleObligationAction: a simple trait for obligation actions that are can be specified
+ * 		in policies, but do not need special logic to be concretized (e.g., they do not
+ *   	contain attribute references, only literal values)
  */
-abstract class ObligationAction // TODO better name for this? very long...
+trait ObligationAction {
 
-// TODO PDP needs to evaluate msg to a ConcreteValue before passing it on to PEP
-case class LogObligationAction(val msg: Value) extends ObligationAction
-object log {
-  def apply(msg: Value) = new LogObligationAction(msg)
+  def getConcrete(implicit ctx: EvaluationCtx): ConcreteObligationAction
+}
+trait ConcreteObligationAction
+trait SimpleObligationAction extends ObligationAction with ConcreteObligationAction {
+
+  override def getConcrete(implicit ctx: EvaluationCtx) = this
 }
 
-case class MailObligationAction(val to: String, val msg: String) extends ObligationAction
-object mail {
-  def apply(to: String, msg: String) = new MailObligationAction(to, msg)
-}
+/**
+ * Logging
+ */
+case class LogObligationAction(val msg: Value) extends ObligationAction {
 
-case class UpdateAttributeObligationAction(val attribute: Attribute, val value: ConcreteValue) extends ObligationAction
-object update {
-  def apply(attribute: Attribute, value: ConcreteValue) =
-    new UpdateAttributeObligationAction(attribute, value)
+  def getConcrete(implicit ctx: EvaluationCtx) = ConcreteLogObligationAction(msg.getConcreteValue(ctx).representation.toString)
 }
+case class ConcreteLogObligationAction(val msg: String) extends ConcreteObligationAction
+
+
+/**
+ * Mailing
+ */
+case class MailObligationAction(val to: String, val msg: String) extends SimpleObligationAction
+
+
+/**
+ * The multiple ways of changing attribute values
+ */
+sealed abstract class AttributeChangeType
+case object Update extends AttributeChangeType
+case object Append extends AttributeChangeType
+case class ChangeAttributeObligationAction(val attribute: Attribute, val value: Value, 
+    val changeType: AttributeChangeType) extends ObligationAction {
+
+  def getConcrete(implicit ctx: EvaluationCtx) = {
+    val entityId = attribute.cType match {
+      case SUBJECT => ctx.subjectId
+      case RESOURCE => ctx.resourceId
+      case _ => throw new IllegalArgumentException(s"You can only update SUBJECT and RESOURCE attributes. Given attribute: $attribute")
+    }
+    ConcreteChangeAttributeObligationAction(entityId, attribute, value.getConcreteValue(ctx), changeType)
+  }
+}
+case class ConcreteChangeAttributeObligationAction(val entityId: String, val attribute: Attribute, 
+    val value: ConcreteValue, val changeType: AttributeChangeType) extends ConcreteObligationAction
+

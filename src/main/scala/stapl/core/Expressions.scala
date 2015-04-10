@@ -21,14 +21,17 @@ package stapl.core
 
 import java.util.Date
 import stapl.core.pdp.EvaluationCtx
+import scala.concurrent.Future
+import concurrent.ExecutionContext.Implicits.global
+import scala.util.{Try, Success, Failure}
 
 abstract class Expression {
   def evaluate(implicit ctx: EvaluationCtx): Boolean
-  
+
   final def &(that: Expression): Expression = And(this, that)
-  
+
   final def |(that: Expression): Expression = Or(this, that)
-  
+
   final def unary_!(): Expression = Not(this)
 }
 
@@ -40,29 +43,29 @@ case object AlwaysFalse extends Expression {
 }
 case class GreaterThanValue(value1: Value, value2: Value) extends Expression {
   override def evaluate(implicit ctx: EvaluationCtx): Boolean = {
-    val ConcreteValue(c1) = value1
-    val ConcreteValue(c2) = value2
+    val c1 = value1.getConcreteValue(ctx)
+    val c2 = value2.getConcreteValue(ctx)
     c1.reprGreaterThan(c2)
   }
 }
 case class BoolExpression(attribute: SimpleAttribute) extends Expression {
   override def evaluate(implicit ctx: EvaluationCtx): Boolean = {
-    val Representation(bool) = attribute
+    val bool = attribute.getConcreteValue(ctx).representation
     bool.asInstanceOf[Boolean]
   }
 }
 
-case class EqualsValue(value1: Value, value2 : Value) extends Expression {
+case class EqualsValue(value1: Value, value2: Value) extends Expression {
   override def evaluate(implicit ctx: EvaluationCtx): Boolean = {
-    val ConcreteValue(c1) = value1
-    val ConcreteValue(c2) = value2
+    val c1 = value1.getConcreteValue(ctx)
+    val c2 = value2.getConcreteValue(ctx)
     c1.equalRepr(c2)
   }
 }
 case class ValueIn(value: Value, list: Value) extends Expression {
   override def evaluate(implicit ctx: EvaluationCtx): Boolean = {
-    val ConcreteValue(c) = value
-    val ConcreteValue(l) = list
+    val c = value.getConcreteValue(ctx)
+    val l = list.getConcreteValue(ctx)
     l.reprContains(c)
   }
 }

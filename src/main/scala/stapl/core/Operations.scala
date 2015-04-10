@@ -20,6 +20,9 @@
 package stapl.core
 
 import stapl.core.pdp.EvaluationCtx
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.{Try, Success, Failure}
 
 sealed abstract class Operation extends Value
 
@@ -37,10 +40,9 @@ case class Addition(left: Value, right: Value) extends Operation {
   
   override val isList = false
   
-  override def getConcreteValue(ctx: EvaluationCtx): ConcreteValue = {
+  override def getConcreteValue(ctx: EvaluationCtx) = {
     val leftValue = left.getConcreteValue(ctx)
-    val rightValue = right.getConcreteValue(ctx)
-    
+    val rightValue = right.getConcreteValue(ctx)    
     leftValue.add(rightValue)
   }
 }
@@ -59,7 +61,7 @@ case class Subtraction(left: Value, right: Value) extends Operation {
   
   override val isList = false
   
-  override def getConcreteValue(ctx: EvaluationCtx): ConcreteValue = {
+  override def getConcreteValue(ctx: EvaluationCtx) = {
     val leftValue = left.getConcreteValue(ctx)
     val rightValue = right.getConcreteValue(ctx)
     
@@ -81,7 +83,7 @@ case class Multiplication(left: Value, right: Value) extends Operation {
   
   override val isList = false
   
-  override def getConcreteValue(ctx: EvaluationCtx): ConcreteValue = {
+  override def getConcreteValue(ctx: EvaluationCtx) = {
     val leftValue = left.getConcreteValue(ctx)
     val rightValue = right.getConcreteValue(ctx)
     
@@ -103,7 +105,7 @@ case class Division(left: Value, right: Value) extends Operation {
   
   override val isList = false
   
-  override def getConcreteValue(ctx: EvaluationCtx): ConcreteValue = {
+  override def getConcreteValue(ctx: EvaluationCtx) = {
     val leftValue = left.getConcreteValue(ctx)
     val rightValue = right.getConcreteValue(ctx)
     
@@ -124,7 +126,7 @@ case class AbsoluteValue(value: Value) extends Operation {
   
   override val isList = false
   
-  override def getConcreteValue(ctx: EvaluationCtx): ConcreteValue = {
+  override def getConcreteValue(ctx: EvaluationCtx) = {
     val cValue = value.getConcreteValue(ctx)
     
     cValue.abs()
