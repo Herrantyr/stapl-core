@@ -37,9 +37,14 @@ abstract class Expression {
 
 case object AlwaysTrue extends Expression {
   override def evaluate(implicit ctx: EvaluationCtx): Boolean = true
+  
+  override def toString(): String = "true"
+    
 }
 case object AlwaysFalse extends Expression {
   override def evaluate(implicit ctx: EvaluationCtx): Boolean = false
+  
+  override def toString(): String = "false"
 }
 case class GreaterThanValue(value1: Value, value2: Value) extends Expression {
   override def evaluate(implicit ctx: EvaluationCtx): Boolean = {
@@ -47,6 +52,8 @@ case class GreaterThanValue(value1: Value, value2: Value) extends Expression {
     val c2 = value2.getConcreteValue(ctx)
     c1.reprGreaterThan(c2)
   }
+  
+  override def toString(): String = "(" + value1.toString() + " > " + value2.toString() + ")" 
 }
 case class BoolExpression(attribute: SimpleAttribute) extends Expression {
   override def evaluate(implicit ctx: EvaluationCtx): Boolean = {
@@ -61,6 +68,9 @@ case class EqualsValue(value1: Value, value2: Value) extends Expression {
     val c2 = value2.getConcreteValue(ctx)
     c1.equalRepr(c2)
   }
+  
+  override def toString(): String = "(" + value1.asInstanceOf[SimpleAttribute].ct + "." + value1.asInstanceOf[SimpleAttribute].name + " == " + value2.toString() + ")"
+  
 }
 case class ValueIn(value: Value, list: Value) extends Expression {
   override def evaluate(implicit ctx: EvaluationCtx): Boolean = {
@@ -68,13 +78,22 @@ case class ValueIn(value: Value, list: Value) extends Expression {
     val l = list.getConcreteValue(ctx)
     l.reprContains(c)
   }
+  
+  override def toString(): String = "(" + value.toString() + " in " + list.asInstanceOf[ListAttribute].cType+ "." + list.asInstanceOf[ListAttribute].name + ")" 
+  
 }
 case class And(expression1: Expression, expression2: Expression) extends Expression {
   override def evaluate(implicit ctx: EvaluationCtx) = expression1.evaluate && expression2.evaluate
+  
+  override def toString(): String = "(" + expression1.toString() + "&" + expression2.toString() + ")"
 }
 case class Or(expression1: Expression, expression2: Expression) extends Expression {
   override def evaluate(implicit ctx: EvaluationCtx) = expression1.evaluate || expression2.evaluate
+  
+  override def toString(): String = "(" + expression1.toString() + "|" + expression2.toString() + ")"
 }
 case class Not(expression: Expression) extends Expression {
   override def evaluate(implicit ctx: EvaluationCtx) = !expression.evaluate
+  
+  override def toString(): String = "(!" + expression.toString() + ")"
 }
