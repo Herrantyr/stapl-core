@@ -79,7 +79,10 @@ case class ValueIn(value: Value, list: Value) extends Expression {
     l.reprContains(c)
   }
   
-  override def toString(): String = "(" + value.toString() + " in " + list.asInstanceOf[ListAttribute].cType+ "." + list.asInstanceOf[ListAttribute].name + ")" 
+  override def toString(): String = value match {
+    case s:SimpleAttribute => "(" + s.cType + "." + s.name + " in " + list.asInstanceOf[ListAttribute].cType+ "." + list.asInstanceOf[ListAttribute].name + ")" 
+    case _ => "(" + value.toString() + " in " + list.asInstanceOf[ListAttribute].cType+ "." + list.asInstanceOf[ListAttribute].name + ")" 
+  }
   
 }
 case class And(expression1: Expression, expression2: Expression) extends Expression {
